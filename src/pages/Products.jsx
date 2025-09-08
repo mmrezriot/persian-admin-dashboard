@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Search, Plus, Edit, Trash2, Heart, Grid, List, X } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, Heart, Grid, List, X, Loader2 } from 'lucide-react'
+import { useProducts } from '../hooks/useFirebase'
 
 const Products = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -7,77 +8,22 @@ const Products = () => {
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [favorites, setFavorites] = useState(new Set())
-  
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      title: 'لپ‌تاپ ایسوس',
-      price: '15,000,000',
-      category: 'لپ‌تاپ',
-      image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=300&h=200&fit=crop',
-      description: 'لپ‌تاپ ایسوس با پردازنده Intel Core i7',
-      stock: 10
-    },
-    {
-      id: 2,
-      title: 'گوشی سامسونگ',
-      price: '8,500,000',
-      category: 'موبایل',
-      image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=200&fit=crop',
-      description: 'گوشی سامسونگ گلکسی S21',
-      stock: 25
-    },
-    {
-      id: 3,
-      title: 'تبلت اپل',
-      price: '12,000,000',
-      category: 'تبلت',
-      image: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=300&h=200&fit=crop',
-      description: 'تبلت اپل آیپد پرو',
-      stock: 8
-    },
-    {
-      id: 4,
-      title: 'هدفون سونی',
-      price: '2,500,000',
-      category: 'لوازم جانبی',
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=200&fit=crop',
-      description: 'هدفون بی‌سیم سونی WH-1000XM4',
-      stock: 15
-    },
-    {
-      id: 5,
-      title: 'کیبورد مکانیکی',
-      price: '1,800,000',
-      category: 'لوازم جانبی',
-      image: 'https://images.unsplash.com/photo-1541140532154-b024d705b90a?w=300&h=200&fit=crop',
-      description: 'کیبورد مکانیکی RGB',
-      stock: 20
-    },
-    {
-      id: 6,
-      title: 'ماوس گیمینگ',
-      price: '800,000',
-      category: 'لوازم جانبی',
-      image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=300&h=200&fit=crop',
-      description: 'ماوس گیمینگ با DPI بالا',
-      stock: 30
-    }
-  ])
+  const { data: products, loading, error, create, update, remove } = useProducts()
 
   const [formData, setFormData] = useState({
-    title: '',
+    name: '',
     price: '',
     category: 'لپ‌تاپ',
     description: '',
     stock: '',
-    image: ''
+    image: '',
+    status: 'active'
   })
 
   const categories = ['لپ‌تاپ', 'موبایل', 'تبلت', 'لوازم جانبی']
 
   const filteredProducts = products.filter(product =>
-    product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.category.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -91,49 +37,85 @@ const Products = () => {
     setFavorites(newFavorites)
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (editingProduct) {
-      setProducts(products.map(product => 
-        product.id === editingProduct.id 
-          ? { ...product, ...formData }
-          : product
-      ))
-    } else {
-      const newProduct = {
-        id: products.length + 1,
-        ...formData
+    try {
+      const productData = {
+        ...formData,
+        price: parseInt(formData.price),
+        stock: parseInt(formData.stock)
       }
-      setProducts([...products, newProduct])
+      
+      if (editingProduct) {
+        await update(editingProduct.id, productData)
+      } else {
+        await create(productData)
+      }
+      setShowModal(false)
+      setEditingProduct(null)
+      setFormData({ name: '', price: '', category: 'لپ‌تاپ', description: '', stock: '', image: '', status: 'active' })
+    } catch (error) {
+      console.error('Error saving product:', error)
+      alert('خطا در ذخیره محصول')
     }
-    setShowModal(false)
-    setEditingProduct(null)
-    setFormData({ title: '', price: '', category: 'لپ‌تاپ', description: '', stock: '', image: '' })
   }
 
   const handleEdit = (product) => {
     setEditingProduct(product)
     setFormData({
-      title: product.title,
-      price: product.price,
+      name: product.name,
+      price: product.price.toString(),
       category: product.category,
-      description: product.description,
+      description: product.description || '',
       stock: product.stock.toString(),
-      image: product.image
+      image: product.image || '',
+      status: product.status
     })
     setShowModal(true)
   }
 
-  const handleDelete = (productId) => {
+  const handleDelete = async (productId) => {
     if (window.confirm('آیا مطمئن هستید که می‌خواهید این محصول را حذف کنید؟')) {
-      setProducts(products.filter(product => product.id !== productId))
+      try {
+        await remove(productId)
+      } catch (error) {
+        console.error('Error deleting product:', error)
+        alert('خطا در حذف محصول')
+      }
     }
   }
 
   const openModal = () => {
     setEditingProduct(null)
-    setFormData({ title: '', price: '', category: 'لپ‌تاپ', description: '', stock: '', image: '' })
+    setFormData({ name: '', price: '', category: 'لپ‌تاپ', description: '', stock: '', image: '', status: 'active' })
     setShowModal(true)
+  }
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('fa-IR').format(amount)
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <span className="mr-2 text-gray-600 dark:text-gray-400">در حال بارگذاری...</span>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 dark:text-red-400 mb-2">خطا در بارگذاری داده‌ها</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{error}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -188,8 +170,8 @@ const Products = () => {
             <div key={product.id} className="card overflow-hidden hover:shadow-lg transition-shadow">
               <div className="relative">
                 <img
-                  src={product.image}
-                  alt={product.title}
+                  src={product.image || 'https://via.placeholder.com/300x200?text=No+Image'}
+                  alt={product.name}
                   className="w-full h-48 object-cover"
                 />
                 <button
@@ -219,14 +201,14 @@ const Products = () => {
               </div>
               <div className="p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                  {product.title}
+                  {product.name}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                   {product.description}
                 </p>
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
-                    {product.price} تومان
+                    {formatCurrency(product.price)} تومان
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
                     {product.category}
@@ -270,15 +252,15 @@ const Products = () => {
                   <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <img
-                        src={product.image}
-                        alt={product.title}
+                        src={product.image || 'https://via.placeholder.com/48x48?text=No+Image'}
+                        alt={product.name}
                         className="h-12 w-12 rounded-lg object-cover"
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {product.title}
+                          {product.name}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">
                           {product.description}
@@ -286,7 +268,7 @@ const Products = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {product.price} تومان
+                      {formatCurrency(product.price)} تومان
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {product.category}
@@ -354,8 +336,8 @@ const Products = () => {
                     <input
                       type="text"
                       required
-                      value={formData.title}
-                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
                       className="input-field"
                     />
                   </div>

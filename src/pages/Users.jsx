@@ -1,53 +1,18 @@
 import { useState } from 'react'
-import { Search, Plus, Edit, Trash2, X } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, X, Loader2 } from 'lucide-react'
+import { useUsers } from '../hooks/useFirebase'
 
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: 'علی احمدی',
-      email: 'ali.ahmadi@example.com',
-      role: 'مدیر',
-      status: 'فعال'
-    },
-    {
-      id: 2,
-      name: 'فاطمه محمدی',
-      email: 'fateme.mohammadi@example.com',
-      role: 'کاربر',
-      status: 'فعال'
-    },
-    {
-      id: 3,
-      name: 'حسن رضایی',
-      email: 'hasan.rezaei@example.com',
-      role: 'ویرایشگر',
-      status: 'غیرفعال'
-    },
-    {
-      id: 4,
-      name: 'زهرا کریمی',
-      email: 'zahra.karimi@example.com',
-      role: 'کاربر',
-      status: 'فعال'
-    },
-    {
-      id: 5,
-      name: 'محمد حسینی',
-      email: 'mohammad.hosseini@example.com',
-      role: 'مدیر',
-      status: 'فعال'
-    }
-  ])
+  const { data: users, loading, error, create, update, remove } = useUsers()
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'کاربر',
-    status: 'فعال'
+    role: 'user',
+    status: 'active'
   })
 
   const filteredUsers = users.filter(user =>
@@ -55,24 +20,21 @@ const Users = () => {
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (editingUser) {
-      setUsers(users.map(user => 
-        user.id === editingUser.id 
-          ? { ...user, ...formData }
-          : user
-      ))
-    } else {
-      const newUser = {
-        id: users.length + 1,
-        ...formData
+    try {
+      if (editingUser) {
+        await update(editingUser.id, formData)
+      } else {
+        await create(formData)
       }
-      setUsers([...users, newUser])
+      setShowModal(false)
+      setEditingUser(null)
+      setFormData({ name: '', email: '', role: 'user', status: 'active' })
+    } catch (error) {
+      console.error('Error saving user:', error)
+      alert('خطا در ذخیره کاربر')
     }
-    setShowModal(false)
-    setEditingUser(null)
-    setFormData({ name: '', email: '', role: 'کاربر', status: 'فعال' })
   }
 
   const handleEdit = (user) => {
@@ -86,16 +48,43 @@ const Users = () => {
     setShowModal(true)
   }
 
-  const handleDelete = (userId) => {
+  const handleDelete = async (userId) => {
     if (window.confirm('آیا مطمئن هستید که می‌خواهید این کاربر را حذف کنید؟')) {
-      setUsers(users.filter(user => user.id !== userId))
+      try {
+        await remove(userId)
+      } catch (error) {
+        console.error('Error deleting user:', error)
+        alert('خطا در حذف کاربر')
+      }
     }
   }
 
   const openModal = () => {
     setEditingUser(null)
-    setFormData({ name: '', email: '', role: 'کاربر', status: 'فعال' })
+    setFormData({ name: '', email: '', role: 'user', status: 'active' })
     setShowModal(true)
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <span className="mr-2 text-gray-600 dark:text-gray-400">در حال بارگذاری...</span>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 dark:text-red-400 mb-2">خطا در بارگذاری داده‌ها</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{error}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -160,15 +149,15 @@ const Users = () => {
                     {user.email}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {user.role}
+                    {user.role === 'admin' ? 'مدیر' : user.role === 'moderator' ? 'ویرایشگر' : 'کاربر'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.status === 'فعال' 
+                      user.status === 'active' 
                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
                         : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
                     }`}>
-                      {user.status}
+                      {user.status === 'active' ? 'فعال' : 'غیرفعال'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2 space-x-reverse">
@@ -248,9 +237,9 @@ const Users = () => {
                       onChange={(e) => setFormData({...formData, role: e.target.value})}
                       className="input-field"
                     >
-                      <option value="کاربر">کاربر</option>
-                      <option value="ویرایشگر">ویرایشگر</option>
-                      <option value="مدیر">مدیر</option>
+                      <option value="user">کاربر</option>
+                      <option value="moderator">ویرایشگر</option>
+                      <option value="admin">مدیر</option>
                     </select>
                   </div>
                   
@@ -263,8 +252,8 @@ const Users = () => {
                       onChange={(e) => setFormData({...formData, status: e.target.value})}
                       className="input-field"
                     >
-                      <option value="فعال">فعال</option>
-                      <option value="غیرفعال">غیرفعال</option>
+                      <option value="active">فعال</option>
+                      <option value="inactive">غیرفعال</option>
                     </select>
                   </div>
                   

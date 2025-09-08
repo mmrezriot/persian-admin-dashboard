@@ -169,3 +169,18 @@ dist/
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+# Firebase
+.firebase/
+.firebaserc
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Firebase service account keys
+service-account-key.json
+firebase-adminsdk-*.json
+
+# Local development files
+deploy.bat
+deploy.sh
