@@ -21,6 +21,8 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  console.log('ProtectedRoute - userProfile.role:', userProfile?.role, 'requiredRole:', requiredRole);
+  
   if (requiredRole && userProfile.role !== requiredRole) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">

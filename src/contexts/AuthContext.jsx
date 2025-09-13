@@ -197,6 +197,15 @@ export const AuthProvider = ({ children }) => {
               role: 'admin', // Default to admin for now
               status: 'active'
             };
+            
+            // Save to Firestore
+            try {
+              await userApi.createUser(basicProfile);
+            } catch (error) {
+              // If user already exists, just continue
+            }
+            
+            console.log('Created basic profile with role:', basicProfile.role);
             setUserProfile(basicProfile);
             sessionService.setSession(basicProfile);
             setSessionTime(sessionService.getRemainingTime());
