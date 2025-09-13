@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Search, Plus, Edit, Trash2, Heart, Grid, List, X, Loader2 } from 'lucide-react'
 import { useProducts } from '../hooks/useFirebase'
+import ImageUpload from '../components/ImageUpload'
 
 const Products = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -395,17 +396,12 @@ const Products = () => {
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      URL تصویر
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.image}
-                      onChange={(e) => setFormData({...formData, image: e.target.value})}
-                      className="input-field"
-                    />
-                  </div>
+                  <ImageUpload
+                    onImageUpload={(imageUrl) => setFormData({...formData, image: imageUrl})}
+                    currentImage={formData.image}
+                    className="mb-4"
+                    aspectRatio="aspect-square"
+                  />
                   
                   <div className="flex justify-end space-x-3 space-x-reverse pt-4">
                     <button

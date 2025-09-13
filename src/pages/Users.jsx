@@ -1,12 +1,14 @@
-import { useState } from 'react'
-import { Search, Plus, Edit, Trash2, X, Loader2 } from 'lucide-react'
-import { useUsers } from '../hooks/useFirebase'
+import { useState, useEffect } from 'react'
+import { Search, Plus, Edit, Trash2, X, Loader2, RefreshCw } from 'lucide-react'
+import { userApi } from '../services/userApi'
 
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
-  const { data: users, loading, error, create, update, remove } = useUsers()
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -14,6 +16,61 @@ const Users = () => {
     role: 'user',
     status: 'active'
   })
+
+  // Load users
+  const loadUsers = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const usersData = await userApi.getAllUsers()
+      setUsers(usersData)
+    } catch (err) {
+      setError(err.message)
+      console.error('Error loading users:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Create user
+  const createUser = async (userData) => {
+    try {
+      const newUser = await userApi.createUser(userData)
+      setUsers(prev => [...prev, newUser])
+      return newUser
+    } catch (err) {
+      setError(err.message)
+      throw err
+    }
+  }
+
+  // Update user
+  const updateUser = async (userId, userData) => {
+    try {
+      const updatedUser = await userApi.updateUser(userId, userData)
+      setUsers(prev => prev.map(user => user.id === userId ? updatedUser : user))
+      return updatedUser
+    } catch (err) {
+      setError(err.message)
+      throw err
+    }
+  }
+
+  // Delete user
+  const deleteUser = async (userId) => {
+    try {
+      await userApi.deleteUser(userId)
+      setUsers(prev => prev.filter(user => user.id !== userId))
+    } catch (err) {
+      setError(err.message)
+      throw err
+    }
+  }
+
+  // Load users on component mount
+  useEffect(() => {
+    loadUsers()
+  }, [])
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -24,9 +81,9 @@ const Users = () => {
     e.preventDefault()
     try {
       if (editingUser) {
-        await update(editingUser.id, formData)
+        await updateUser(editingUser.id, formData)
       } else {
-        await create(formData)
+        await createUser(formData)
       }
       setShowModal(false)
       setEditingUser(null)
@@ -51,7 +108,7 @@ const Users = () => {
   const handleDelete = async (userId) => {
     if (window.confirm('آیا مطمئن هستید که می‌خواهید این کاربر را حذف کنید؟')) {
       try {
-        await remove(userId)
+        await deleteUser(userId)
       } catch (error) {
         console.error('Error deleting user:', error)
         alert('خطا در حذف کاربر')
@@ -95,13 +152,23 @@ const Users = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">کاربران</h1>
           <p className="text-gray-600 dark:text-gray-400">مدیریت کاربران سیستم</p>
         </div>
-        <button
-          onClick={openModal}
-          className="btn-primary flex items-center mt-4 sm:mt-0"
-        >
-          <Plus className="h-4 w-4 ml-2" />
-          افزودن کاربر
-        </button>
+        <div className="flex items-center space-x-3 space-x-reverse mt-4 sm:mt-0">
+          <button
+            onClick={loadUsers}
+            className="btn-secondary flex items-center"
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ml-2 ${loading ? 'animate-spin' : ''}`} />
+            بروزرسانی
+          </button>
+          <button
+            onClick={openModal}
+            className="btn-primary flex items-center"
+          >
+            <Plus className="h-4 w-4 ml-2" />
+            افزودن کاربر
+          </button>
+        </div>
       </div>
 
       {/* Search */}

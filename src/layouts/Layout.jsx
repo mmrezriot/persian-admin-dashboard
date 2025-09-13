@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { 
   LayoutDashboard, 
   Users, 
@@ -8,13 +9,19 @@ import {
   Menu, 
   X,
   Sun,
-  Moon
+  Moon,
+  LogOut,
+  User,
+  RefreshCw
 } from 'lucide-react'
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
+  const { currentUser, userProfile, logout, sessionTime, extendSession } = useAuth()
 
   const navigation = [
     { name: 'داشبورد', href: '/dashboard', icon: LayoutDashboard },
@@ -26,6 +33,31 @@ const Layout = ({ children }) => {
   const toggleDarkMode = () => {
     setDarkMode(!darkMode)
     document.documentElement.classList.toggle('dark')
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      // Clear any remaining session data
+      localStorage.removeItem('persian_admin_session')
+      // Force navigation to login
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Error logging out:', error)
+      // Force logout even if there's an error
+      localStorage.removeItem('persian_admin_session')
+      // Force navigation to login
+      window.location.href = '/login'
+    }
+  }
+
+  const getRoleText = (role) => {
+    switch (role) {
+      case 'admin': return 'مدیر'
+      case 'moderator': return 'ویرایشگر'
+      case 'user': return 'کاربر'
+      default: return 'کاربر'
+    }
   }
 
   return (
@@ -114,8 +146,62 @@ const Layout = ({ children }) => {
             >
               {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              خوش آمدید
+            
+            {/* User Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center space-x-2 space-x-reverse text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+              >
+                <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
+                  <User className="h-4 w-4 text-primary-600 dark:text-primary-400" />
+                </div>
+                <div className="text-right">
+                  <div className="font-medium">{userProfile?.name || currentUser?.displayName}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {getRoleText(userProfile?.role)}
+                  </div>
+                  {sessionTime > 0 && (
+                    <div className="text-xs text-blue-500 dark:text-blue-400">
+                      {sessionTime} ساعت باقی‌مانده
+                    </div>
+                  )}
+                </div>
+              </button>
+
+              {/* Dropdown Menu */}
+              {userMenuOpen && (
+                <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
+                  <div className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                    <div className="font-medium">{userProfile?.name || currentUser?.displayName}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{currentUser?.email}</div>
+                    {sessionTime > 0 && (
+                      <div className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                        {sessionTime} ساعت باقی‌مانده
+                      </div>
+                    )}
+                  </div>
+                  {sessionTime > 0 && (
+                    <button
+                      onClick={() => {
+                        extendSession();
+                        setUserMenuOpen(false);
+                      }}
+                      className="flex items-center w-full px-4 py-2 text-sm text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-700"
+                    >
+                      <RefreshCw className="h-4 w-4 ml-2" />
+                      تمدید جلسه
+                    </button>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <LogOut className="h-4 w-4 ml-2" />
+                    خروج
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
